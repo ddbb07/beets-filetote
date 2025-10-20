@@ -15,12 +15,24 @@ from typing import (
 )
 
 from beets import config, util
-from beets.library import DefaultTemplateFunctions
 from beets.plugins import BeetsPlugin, find_plugins
 from beets.ui import get_path_formats
 from beets.util import MoveOperation
 from beets.util.functemplate import Template
 from mediafile import TYPES as BEETS_FILE_TYPES
+
+"""Try to import template_funcs,
+else define it using the old DefaultTemplateFunctions.
+"""
+try:
+    from beets.plugins import template_funcs
+except:
+    from beets.library import DefaultTemplateFunctions
+    from beets.plugins import TFuncMap
+
+    def template_funcs() -> TFuncMap[str]:
+        return DefaultTemplateFunctions().functions()
+
 
 from .filetote_dataclasses import (
     FiletoteArtifact,
@@ -236,11 +248,13 @@ class FiletotePlugin(BeetsPlugin):
         list of files by extension.
         """
         # Mutate the global BEETS_FILE_TYPES dictionary in-place
-        BEETS_FILE_TYPES.update({
-            "m4a": "M4A",
-            "wma": "WMA",
-            "wave": "WAVE",
-        })
+        BEETS_FILE_TYPES.update(
+            {
+                "m4a": "M4A",
+                "wma": "WMA",
+                "wave": "WAVE",
+            }
+        )
 
         for plugin in find_plugins():
             if plugin.name == "convert":
@@ -361,11 +375,13 @@ class FiletotePlugin(BeetsPlugin):
                     selected_path_format = path_format
             elif (
                 pattern_category
-                and not query.startswith((
-                    filename_prefix,
-                    paired_ext_prefix,
-                    ext_prefix,
-                ))
+                and not query.startswith(
+                    (
+                        filename_prefix,
+                        paired_ext_prefix,
+                        ext_prefix,
+                    )
+                )
                 and query.removeprefix(pattern_prefix) == pattern_category
             ):
                 # This should pull the corresponding pattern def,
@@ -432,7 +448,7 @@ class FiletotePlugin(BeetsPlugin):
         assert album_path is not None
 
         # Get template functions and evaluate against mapping
-        template_functions = DefaultTemplateFunctions().functions()
+        template_functions = template_funcs()
         artifact_path = (
             selected_path_template.substitute(mapping_formatted, template_functions)
             + artifact_ext
